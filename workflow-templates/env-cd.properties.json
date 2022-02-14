@@ -1,0 +1,4 @@
+{
+    "name": "Deployment setup non-prod env",
+    "description": "TFSO starter workflow for deployment of any docker image to our environment"
+}

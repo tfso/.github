@@ -1,0 +1,35 @@
+name: (Release) Beta
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  SERVICE_NAME: tfso.api.hour
+  TEAM_NAME: ''
+  MODULE_NAME: ''
+  ENVIRONMENT: beta
+  TFSO_REPO_KEY: ${{ secrets.TFSO_REPO_KEY }}
+
+jobs:
+  beta:
+    environment: beta
+    name: Beta
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: tfso/actions-cicd-demo
+        token: ${{ secrets.REPO_TEST_KEY }}
+        path: .github/actions
+
+    - uses: ./.github/actions/deployment
+      name: Deploy to beta
+      with:
+        deployment_token: ${{ secrets.DEPLOYMENT_API_TOKEN }}
+        service_name: ${{ env.SERVICE_NAME }}
+        team: ${{ env.TEAM_NAME }}
+        module: ${{ env.MODULE_NAME }}
+        environment: ${{ env.ENVIRONMENT }}

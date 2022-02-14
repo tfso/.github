@@ -1,0 +1,7 @@
+{
+    "name": "Node API build workflow",
+    "description": "TFSO starter workflow for continuous integration of Node/JS APIs. ",
+    "categories": [
+        "node"
+    ]
+}

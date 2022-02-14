@@ -1,0 +1,50 @@
+name: (Release) Prod
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  SERVICE_NAME: ''
+  TEAM_NAME: ''
+  MODULE_NAME: ''
+  ENVIRONMENT: prod
+  TFSO_REPO_KEY: ${{ secrets.TFSO_REPO_KEY }}
+
+jobs:
+  prod:
+    environment: prod
+    name: Prod
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: tfso/actions-cicd-demo
+        token: ${{ env.TFSO_REPO_KEY }}
+        path: .github/actions
+
+    - uses: ./.github/actions/deployment
+      name: Deploy
+      with:
+        deployment_token: ${{ secrets.DEPLOYMENT_API_TOKEN }}
+        service_name: ${{ env.SERVICE_NAME }}
+        team: ${{ env.TEAM_NAME }}
+        module: ${{ env.MODULE_NAME }}
+        environment: ${{ env.ENVIRONMENT }}
+        
+    - uses: ./.github/actions/release-changelog
+      name: Create Github Release
+      id: release
+        
+    - uses: ./.github/actions/tfso-changelog
+      name: Update TFSO Changelog
+      with:
+        google_private_key: ${{ secrets.GOOGLE_CHANGELOG_PRIVATE_KEY }}
+        google_email: ${{ secrets.GOOGLE_CHANGELOG_EMAIL }}
+        service_name: ${{ env.SERVICE_NAME }}
+        team: ${{ env.TEAM_NAME }}
+        module: ${{ env.MODULE_NAME }}
+        environment: ${{ env.ENVIRONMENT }}
+        release_type: ${{ steps.release.outputs.release_type }}
