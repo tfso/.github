@@ -1,4 +1,8 @@
 {
     "name": "Deployment Prod",
-    "description": "TFSO starter workflow for production deployment. "
+    "description": "TFSO starter workflow for production deployment. ",
+    "categories": [
+        "Deployment",
+        "Docker"
+    ]
 }
