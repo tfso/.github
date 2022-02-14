@@ -10,7 +10,7 @@ env:
   TEAM_NAME: ''
   MODULE_NAME: ''
   ENVIRONMENT: beta
-  TFSO_REPO_KEY: ${{ secrets.TFSO_REPO_KEY }}
+  TFSO_REPO_READ: ${{ secrets.TFSO_REPO_READ }}
 
 jobs:
   beta:
@@ -22,7 +22,7 @@ jobs:
     - uses: actions/checkout@v2
       with:
         repository: tfso/actions-cicd-demo
-        token: ${{ secrets.REPO_TEST_KEY }}
+        token: ${{ env.TFSO_REPO_READ }}
         path: .github/actions
 
     - uses: ./.github/actions/deployment

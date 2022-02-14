@@ -9,7 +9,8 @@ on:
 env:
   REGISTRY: docker.io
   IMAGE_NAME: tfso/
-  TFSO_REPO_KEY: ${{ secrets.TFSO_REPO_KEY }}
+  TFSO_REPO_READ: ${{ secrets.TFSO_REPO_READ }}
+  TFSO_REPO_TAG: ${{ secrets.TFSO_REPO_TAG }}
 
 jobs:
   build:
@@ -39,7 +40,7 @@ jobs:
 
     - name: Install
       run: |
-        git config --global url."https://${{ env.TFSO_REPO_KEY }}@github.com/".insteadOf ssh://git@github.com/
+        git config --global url."https://${{ env.TFSO_REPO_READ }}@github.com/".insteadOf ssh://git@github.com/
         npm ci
 
     - name: Lint
@@ -76,5 +77,5 @@ jobs:
       if: github.ref == 'refs/heads/main'
       uses: anothrNick/github-tag-action@1.36.0
       env:
-        GITHUB_TOKEN: ${{ env.TFSO_REPO_KEY }}
+        GITHUB_TOKEN: ${{ env.TFSO_REPO_TAG }}
         CUSTOM_TAG: ${{ steps.new_tag.outputs.new_tag }}
