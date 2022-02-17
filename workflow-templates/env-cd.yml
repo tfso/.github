@@ -6,11 +6,10 @@ on:
       - 'v*'
 
 env:
-  SERVICE_NAME: tfso.api.hour
-  TEAM_NAME: ''
+  SERVICE_NAME: tfso.api.hour # Same as AppVeyor project name
+  TEAM_NAME: '' 
   MODULE_NAME: ''
   ENVIRONMENT: beta
-  TFSO_REPO_READ: ${{ secrets.TFSO_REPO_READ }}
 
 jobs:
   beta:
@@ -22,11 +21,11 @@ jobs:
     - uses: actions/checkout@v2
       with:
         repository: tfso/actions-cicd-demo
-        token: ${{ env.TFSO_REPO_READ }}
+        token: ${{ secrets.TFSO_REPO_READ }}
         path: .github/actions
 
     - uses: ./.github/actions/deployment
-      name: Deploy to beta
+      name: Deploy
       with:
         deployment_token: ${{ secrets.DEPLOYMENT_API_TOKEN }}
         service_name: ${{ env.SERVICE_NAME }}

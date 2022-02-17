@@ -6,23 +6,24 @@ on:
       - 'v*'
 
 env:
-  SERVICE_NAME: ''
+  SERVICE_NAME: tfso.api.hour # Same as AppVeyor project name
   TEAM_NAME: ''
   MODULE_NAME: ''
   ENVIRONMENT: prod
-  TFSO_REPO_READ: ${{ secrets.TFSO_REPO_READ }}
 
 jobs:
   prod:
     environment: prod
     name: Prod
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
     - uses: actions/checkout@v2
       with:
         repository: tfso/actions-cicd-demo
-        token: ${{ env.TFSO_REPO_READ }}
+        token: ${{ secrets.TFSO_REPO_READ }}
         path: .github/actions
 
     - uses: ./.github/actions/deployment
@@ -40,11 +41,12 @@ jobs:
         
     - uses: ./.github/actions/tfso-changelog
       name: Update TFSO Changelog
+      env:
+        GOOGLE_CHANGELOG_SPREADSHEETS_ID: ${{ secrets.GOOGLE_CHANGELOG_SPREADSHEETS_ID }}
       with:
         google_private_key: ${{ secrets.GOOGLE_CHANGELOG_PRIVATE_KEY }}
         google_email: ${{ secrets.GOOGLE_CHANGELOG_EMAIL }}
         service_name: ${{ env.SERVICE_NAME }}
         team: ${{ env.TEAM_NAME }}
         module: ${{ env.MODULE_NAME }}
-        environment: ${{ env.ENVIRONMENT }}
         release_type: ${{ steps.release.outputs.release_type }}

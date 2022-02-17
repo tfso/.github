@@ -7,40 +7,59 @@ on:
       - '**'
 
 env:
-  REGISTRY: docker.io
-  IMAGE_NAME: tfso/
-  TFSO_REPO_READ: ${{ secrets.TFSO_REPO_READ }}
-  TFSO_REPO_TAG: ${{ secrets.TFSO_REPO_TAG }}
+  IMAGE_NAME: tfso/api-hour # Example docker image name
+  SERVICE_NAME: tfso.api.hour # Must be same as AppVeyor project name
+  MAIN_BRANCH: main # This must be correct for beta/prod deployment to work
+  MODULE_NAME: hours
+  ENVIRONMENT: beta # What environment #deploy_branch should deploy to
+  INITIAL_VERSION: 1.0.0 # Should be 
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    name: Build
+    outputs:
+      deploy_branch: ${{ steps.deploy_branch.outputs.deploy_branch }}
+      branch_tag: ${{ steps.new_tag.outputs.new_tag }}
+
     steps:
+    - id: deploy_branch
+      if: github.ref != format('refs/heads/{0}', env.MAIN_BRANCH)
+      name: Deploy branch?
+      run: echo "::set-output name=deploy_branch::${{ contains(github.event.head_commit.message, '#deploy_branch') && 'true' || 'false' }}"
+
     - uses: actions/checkout@v2
       with:
         fetch-depth: '0'
-        persist-credentials: false # Only needed if the build need access to other repos
+        persist-credentials: false
 
     - name: Setup
       uses: actions/setup-node@v2
       with:
         node-version: 14
-        registry-url: 'https://npm.pkg.github.com'
-        scope: '@tfso'
-        token: ${{ secrets.NPM_TFSO_TOKEN }}
+    
+    - name: Create branch suffix
+      if: github.ref != format('refs/heads/{0}', env.MAIN_BRANCH)
+      id: branch_tag
+      run: echo "::set-output name=suffix::$(echo ${{ github.ref_name }} | sed 's/[^a-zA-Z0-9]/-/g')"
 
-
-    - name: Create new version
+    - name: Create next version
       id: new_tag
       uses: anothrNick/github-tag-action@1.36.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         WITH_V: true
         DRY_RUN: true
+        DEFAULT_BUMP: patch
+        RELEASE_BRANCHES: ${{ env.MAIN_BRANCH }}
+        PRERELEASE_SUFFIX: ${{ steps.branch_tag.outputs.suffix }}
 
+    # Git config i needed if the project depends on any private github repos
+    # npm config sets tfso Github Package token
     - name: Install
       run: |
-        git config --global url."https://${{ env.TFSO_REPO_READ }}@github.com/".insteadOf ssh://git@github.com/
+        git config --global url."https://${{ secrets.TFSO_REPO_READ }}@github.com/".insteadOf ssh://git@github.com/
+        npm config set //npm.pkg.github.com/:_authToken=${{ secrets.NPM_TFSO_TOKEN }} --userconfig .npmrc
         npm ci
 
     - name: Lint
@@ -51,31 +70,43 @@ jobs:
 
     - name: Test
       run: npm test
-
-    - name: Log into registry ${{ env.REGISTRY }}
-      if: github.event_name != 'pull_request'
-      uses: docker/login-action@v1
+    
+    - name: Build and push Docker image
+      uses: tfso/gh-action-helpers/build-and-push@v1.0.1
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-
-    - name: Extract Docker metadata
-      id: meta
-      uses: docker/metadata-action@v3
-      with:
-        images: ${{ env.IMAGE_NAME }}
-    
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        push: ${{ github.ref == 'refs/heads/main' }}
-        tags: ${{ env.IMAGE_NAME }}:${{ steps.new_tag.outputs.new_tag }}
-        labels: ${{ steps.meta.outputs.labels }}
+        image: ${{ env.IMAGE_NAME }}:${{ steps.new_tag.outputs.new_tag }}
+        push: ${{ github.ref == format('refs/heads/{0}', env.MAIN_BRANCH) || steps.deploy_branch.outputs.deploy_branch == 'true' }}
 
     - name: Push tag
-      if: github.ref == 'refs/heads/main'
+      if: github.ref == format('refs/heads/{0}', env.MAIN_BRANCH)
       uses: anothrNick/github-tag-action@1.36.0
       env:
-        GITHUB_TOKEN: ${{ env.TFSO_REPO_TAG }}
+        GITHUB_TOKEN: ${{ secrets.TFSO_REPO_TAG }}
         CUSTOM_TAG: ${{ steps.new_tag.outputs.new_tag }}
+
+  beta:
+    if: needs.build.outputs.deploy_branch == 'true'
+    environment: beta
+    name: Beta branch
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: tfso/actions-cicd-demo
+        token: ${{ secrets.TFSO_REPO_READ }}
+        path: .github/actions
+
+    - uses: ./.github/actions/deployment
+      name: Deploy
+      with:
+        deployment_token: ${{ secrets.DEPLOYMENT_API_TOKEN }}
+        service_name: ${{ env.SERVICE_NAME }}
+        team: ${{ env.TEAM_NAME }}
+        module: ${{ env.MODULE_NAME }}
+        environment: ${{ env.ENVIRONMENT }}
+        version: ${{ needs.build.outputs.branch_tag }}
+
